@@ -1,0 +1,1070 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LogiSense - Multi-Modal Intelligence</title>
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;600&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+  
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+  
+  <style>
+    :root {
+      --bg-navy: #0a0e1a;
+      --panel-bg: #111827;
+      --cyan: #00d4ff;
+      --cyan-glow: rgba(0, 212, 255, 0.4);
+      --amber: #ffb347;
+      --amber-glow: rgba(255, 179, 71, 0.4);
+      --red: #ff4757;
+      --red-glow: rgba(255, 71, 87, 0.4);
+      --yellow: #ffd32a;
+      --green: #0be881;
+      --text-main: #f3f4f6;
+      --text-muted: #9ca3af;
+      --border-color: #1f2937;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-navy);
+      color: var(--text-main);
+      font-family: 'Sora', sans-serif;
+      height: 100vh;
+      display: flex;
+      overflow: hidden;
+    }
+
+    .data-font {
+      font-family: 'Space Mono', monospace;
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: var(--panel-bg);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #374151;
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #4b5563;
+    }
+
+    /* Layout */
+    .left-panel {
+      width: 280px;
+      min-width: 280px;
+      background-color: var(--panel-bg);
+      border-right: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+      z-index: 10;
+      box-shadow: 2px 0 10px rgba(0,0,0,0.5);
+    }
+
+    .center-panel {
+      flex-grow: 1;
+      position: relative;
+    }
+
+    .right-panel {
+      width: 320px;
+      min-width: 320px;
+      background-color: var(--panel-bg);
+      border-left: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+      z-index: 10;
+      box-shadow: -2px 0 10px rgba(0,0,0,0.5);
+    }
+
+    /* Left Panel Components */
+    .brand-header {
+      padding: 20px;
+      border-bottom: 1px solid var(--border-color);
+    }
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 24px;
+      font-weight: 600;
+      color: var(--cyan);
+      letter-spacing: 1px;
+    }
+    .logo-mark {
+      font-family: 'Space Mono', monospace;
+      font-weight: bold;
+      text-shadow: 0 0 10px var(--cyan-glow);
+    }
+    .subtitle {
+      font-size: 11px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-top: 5px;
+    }
+
+    .stats-bar {
+      padding: 15px 20px;
+      background: rgba(0,0,0,0.2);
+      border-bottom: 1px solid var(--border-color);
+      font-size: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+    .stats-main {
+      font-weight: 600;
+    }
+    .stats-breakdown {
+      display: flex;
+      gap: 10px;
+    }
+    .stat-alert { color: var(--amber); }
+    .stat-crit { color: var(--red); }
+
+    .alert-feed {
+      flex-grow: 1;
+      overflow-y: auto;
+      padding: 15px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .shipment-card {
+      background: #1f2937;
+      border-radius: 6px;
+      padding: 12px;
+      cursor: pointer;
+      border: 1px solid transparent;
+      transition: all 0.2s;
+      position: relative;
+    }
+    .shipment-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    }
+    .card-critical { border-left: 3px solid var(--red); background: linear-gradient(90deg, rgba(255, 71, 87, 0.1) 0%, rgba(31, 41, 55, 1) 100%); }
+    .card-high { border-left: 3px solid var(--amber); }
+    .card-medium { border-left: 3px solid var(--yellow); }
+    .card-clear { border-left: 3px solid var(--green); }
+    
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+    .card-id-wrap {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .card-id {
+      font-size: 14px;
+      font-weight: 600;
+    }
+    .card-route {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+    .card-cause {
+      font-size: 12px;
+      color: var(--text-main);
+      margin-bottom: 4px;
+    }
+    .card-delay {
+      font-size: 12px;
+      text-align: right;
+    }
+    
+    .badge {
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: bold;
+      text-transform: uppercase;
+    }
+    .badge-critical { background: var(--red); color: white; box-shadow: 0 0 5px var(--red-glow); }
+    .badge-high { background: var(--amber); color: #000; }
+    .badge-medium { background: var(--yellow); color: #000; }
+    .badge-clear { background: var(--green); color: #000; }
+
+    /* Center Panel Map */
+    #map {
+      height: 100%;
+      width: 100%;
+      background: var(--bg-navy);
+      z-index: 1; /* Keep map below overlays */
+    }
+
+    .live-badge {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      z-index: 1000;
+      background: rgba(17, 24, 39, 0.8);
+      border: 1px solid var(--border-color);
+      padding: 6px 12px;
+      border-radius: 20px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      backdrop-filter: blur(4px);
+    }
+    .pulse-dot {
+      width: 8px;
+      height: 8px;
+      background: var(--red);
+      border-radius: 50%;
+      box-shadow: 0 0 10px var(--red);
+      animation: pulse 1.5s infinite;
+    }
+
+    .mini-legend {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      z-index: 1000;
+      background: rgba(17, 24, 39, 0.8);
+      border: 1px solid var(--border-color);
+      padding: 10px;
+      border-radius: 8px;
+      font-size: 11px;
+      backdrop-filter: blur(4px);
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 4px;
+    }
+    .legend-color { width: 10px; height: 10px; border-radius: 2px; }
+
+    /* Map Markers */
+    .marker-pulse {
+      border-radius: 50%;
+      position: relative;
+    }
+    .marker-pulse::after {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      border-radius: 50%;
+      border: 2px solid inherit;
+      opacity: 0;
+    }
+    .marker-ship { border-radius: 50%; }
+    .marker-truck { border-radius: 2px; }
+    .marker-flight { 
+      width: 0 !important; 
+      height: 0 !important; 
+      border-left: 6px solid transparent;
+      border-right: 6px solid transparent;
+      border-bottom: 12px solid;
+      background: transparent !important;
+    }
+    
+    .marker-red { background: var(--red); border-bottom-color: var(--red); box-shadow: 0 0 10px var(--red-glow); }
+    .marker-amber { background: var(--amber); border-bottom-color: var(--amber); box-shadow: 0 0 8px var(--amber-glow); }
+    .marker-yellow { background: var(--yellow); border-bottom-color: var(--yellow); }
+    .marker-green { background: var(--green); border-bottom-color: var(--green); }
+
+    .flashing-border::after {
+      animation: expandPulse 1.5s infinite;
+      border-color: var(--red);
+    }
+
+    /* Leaflet Overrides */
+    .leaflet-popup-content-wrapper {
+      background: var(--panel-bg);
+      color: var(--text-main);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+    }
+    .leaflet-popup-tip {
+      background: var(--panel-bg);
+      border: 1px solid var(--border-color);
+    }
+    .leaflet-container a.leaflet-popup-close-button {
+      color: var(--text-muted);
+    }
+    .popup-content {
+      font-family: 'Sora', sans-serif;
+    }
+    .popup-content h3 { font-size: 16px; margin-bottom: 5px; color: var(--cyan); }
+    .popup-content p { font-size: 12px; margin: 3px 0; color: var(--text-muted); }
+    .popup-content .data-val { color: var(--text-main); font-family: 'Space Mono', monospace; }
+    .ask-ai-btn {
+      width: 100%;
+      background: transparent;
+      color: var(--cyan);
+      border: 1px solid var(--cyan);
+      padding: 6px 10px;
+      margin-top: 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+    .ask-ai-btn:hover {
+      background: rgba(0, 212, 255, 0.1);
+      box-shadow: 0 0 8px var(--cyan-glow);
+    }
+    .leaflet-tooltip {
+      background: rgba(17, 24, 39, 0.9);
+      border: 1px solid var(--border-color);
+      color: white;
+      font-family: 'Sora', sans-serif;
+      font-size: 11px;
+    }
+    .leaflet-tooltip-top:before { border-top-color: rgba(17, 24, 39, 0.9); }
+
+    /* Right Panel Chat */
+    .chat-header {
+      padding: 20px;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .chat-title { font-weight: 600; }
+    .model-badge {
+      font-size: 10px;
+      background: rgba(255,255,255,0.1);
+      padding: 3px 8px;
+      border-radius: 12px;
+      font-family: 'Space Mono', monospace;
+    }
+
+    .chat-history {
+      flex-grow: 1;
+      overflow-y: auto;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+    .message {
+      max-width: 85%;
+      padding: 12px 16px;
+      border-radius: 8px;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+    .msg-user {
+      align-self: flex-end;
+      background: #374151;
+      border-bottom-right-radius: 2px;
+    }
+    .msg-ai {
+      align-self: flex-start;
+      background: rgba(0, 212, 255, 0.05);
+      border-left: 3px solid var(--cyan);
+      border-bottom-left-radius: 2px;
+      position: relative;
+    }
+    .msg-ai-header {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 6px;
+      font-size: 11px;
+      color: var(--cyan);
+      font-weight: 600;
+      opacity: 0.8;
+    }
+    
+    .typing-indicator {
+      display: flex;
+      gap: 4px;
+      padding: 10px;
+      align-self: flex-start;
+    }
+    .typing-dot {
+      width: 6px;
+      height: 6px;
+      background: var(--cyan);
+      border-radius: 50%;
+      animation: bounce 1.4s infinite ease-in-out both;
+    }
+    .typing-dot:nth-child(1) { animation-delay: -0.32s; }
+    .typing-dot:nth-child(2) { animation-delay: -0.16s; }
+
+    .chat-suggestions {
+      padding: 0 15px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 10px;
+    }
+    .chip {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid var(--border-color);
+      color: var(--text-muted);
+      border-radius: 15px;
+      padding: 4px 10px;
+      font-size: 11px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .chip:hover {
+      background: rgba(255,255,255,0.1);
+      color: white;
+    }
+
+    .chat-input-area {
+      padding: 15px;
+      border-top: 1px solid var(--border-color);
+      background: var(--panel-bg);
+    }
+    .input-wrapper {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .chat-input {
+      flex-grow: 1;
+      background: #1f2937;
+      border: 1px solid var(--border-color);
+      color: white;
+      padding: 10px 12px;
+      border-radius: 6px;
+      font-family: inherit;
+      font-size: 13px;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .chat-input:focus {
+      border-color: var(--cyan);
+      box-shadow: 0 0 5px var(--cyan-glow);
+    }
+    .send-btn {
+      background: var(--cyan);
+      color: #000;
+      border: none;
+      border-radius: 6px;
+      width: 40px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      transition: all 0.2s;
+    }
+    .send-btn:hover {
+      background: #33deff;
+      box-shadow: 0 0 10px var(--cyan-glow);
+    }
+    
+    .context-toggle {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+    .toggle-label {
+      font-size: 10px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+    }
+    /* Switch */
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 28px;
+      height: 16px;
+    }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-color: #374151;
+      transition: .4s;
+      border-radius: 16px;
+    }
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 12px;
+      width: 12px;
+      left: 2px;
+      bottom: 2px;
+      background-color: white;
+      transition: .4s;
+      border-radius: 50%;
+    }
+    input:checked + .slider { background-color: var(--cyan); }
+    input:checked + .slider:before { transform: translateX(12px); }
+
+    /* Toast */
+    .toast-container {
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 2000;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .toast {
+      background: rgba(255, 71, 87, 0.9);
+      color: white;
+      padding: 10px 20px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      box-shadow: 0 4px 15px rgba(255, 71, 87, 0.4);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      animation: slideDown 0.3s forwards;
+      backdrop-filter: blur(4px);
+    }
+
+    .demo-btn {
+      position: absolute;
+      bottom: 10px;
+      left: 10px;
+      opacity: 0.1;
+      background: transparent;
+      border: 1px solid var(--text-muted);
+      color: var(--text-muted);
+      font-size: 8px;
+      cursor: pointer;
+      z-index: 1000;
+    }
+    .demo-btn:hover { opacity: 1; }
+
+    /* Animations */
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 0 rgba(255, 71, 87, 0.7); }
+      70% { box-shadow: 0 0 0 10px rgba(255, 71, 87, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(255, 71, 87, 0); }
+    }
+    @keyframes expandPulse {
+      0% { opacity: 0.8; transform: scale(1); }
+      100% { opacity: 0; transform: scale(3); }
+    }
+    @keyframes bounce {
+      0%, 80%, 100% { transform: scale(0); }
+      40% { transform: scale(1); }
+    }
+    @keyframes slideDown {
+      from { transform: translateY(-20px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- LEFT PANEL -->
+  <aside class="left-panel">
+    <div class="brand-header">
+      <div class="logo">
+        <span class="logo-mark">L&Sigma;</span> LogiSense
+      </div>
+      <div class="subtitle">Multi-Modal Intelligence</div>
+    </div>
+    <div class="stats-bar">
+      <div class="stats-main" id="stats-total">0 Active Shipments</div>
+      <div class="stats-breakdown">
+        <span class="stat-alert data-font" id="stats-high">0 At Risk</span> |
+        <span class="stat-crit data-font" id="stats-crit">0 Critical</span>
+      </div>
+    </div>
+    <div class="alert-feed" id="alert-feed">
+      <!-- Cards injected by JS -->
+    </div>
+  </aside>
+
+  <!-- CENTER PANEL -->
+  <main class="center-panel">
+    <div class="live-badge">
+      <div class="pulse-dot"></div> LIVE
+    </div>
+    
+    <div class="mini-legend">
+      <div style="font-weight:600;margin-bottom:6px;border-bottom:1px solid #374151;padding-bottom:4px;">Risk Scale</div>
+      <div class="legend-item"><div class="legend-color marker-red"></div> <span class="data-font">CRIT &gt;0.7</span></div>
+      <div class="legend-item"><div class="legend-color marker-amber"></div> <span class="data-font">HIGH &gt;0.4</span></div>
+      <div class="legend-item"><div class="legend-color marker-yellow"></div> <span class="data-font">MED &gt;0.2</span></div>
+      <div class="legend-item"><div class="legend-color marker-green"></div> <span class="data-font">CLR &lt;0.2</span></div>
+    </div>
+
+    <div id="map"></div>
+    
+    <button id="demo-mode" class="demo-btn">Demo</button>
+  </main>
+
+  <!-- RIGHT PANEL -->
+  <aside class="right-panel">
+    <div class="chat-header">
+      <div class="chat-title">LogiSense AI</div>
+      <div class="model-badge">Gemma 4 &middot; Local</div>
+    </div>
+    <div class="chat-history" id="chat-history">
+      <div class="message msg-ai">
+        <div class="msg-ai-header">
+          <span class="logo-mark" style="font-size:12px;">L&Sigma;</span> Assistant
+        </div>
+        Welcome to LogiSense. I'm analyzing the global map. How can I help you manage your shipments today?
+      </div>
+    </div>
+    
+    <div class="chat-suggestions" id="chat-suggestions">
+      <div class="chip" onclick="fillChat('What\'s at risk today?')">What's at risk today?</div>
+      <div class="chip" onclick="fillChat('Show critical shipments')">Show critical shipments</div>
+      <div class="chip" onclick="fillChat('Weather impact this week?')">Weather impact this week?</div>
+    </div>
+
+    <div class="chat-input-area">
+      <div class="input-wrapper">
+        <input type="text" id="chat-input" class="chat-input" placeholder="Ask about routes, delays..." autocomplete="off">
+        <button id="send-btn" class="send-btn">
+          <svg style="width:18px;height:18px;stroke:currentcolor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;fill:none" viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+        </button>
+      </div>
+      <div class="context-toggle">
+        <span class="toggle-label">Context Injected</span>
+        <label class="switch">
+          <input type="checkbox" id="context-toggle" checked>
+          <span class="slider"></span>
+        </label>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Toast Container -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  
+  <script>
+    // --- APP STATE & CONFIG ---
+    let map;
+    let markers = {}; // ID -> Leaflet marker
+    let routes = {}; // ID -> Leaflet polyline
+    
+    // Mock Data to simulate API / Simulate Backend
+    let shipments = [
+      { id: 'SH-1042', mode: 'truck', origin: 'Chennai', dest: 'Bengaluru', lat: 12.97, lon: 79.5, destLat: 12.9716, destLon: 77.5946, risk: 0.15, cause: 'Normal traffic', delay: '+0 min', angle: 270 },
+      { id: 'SH-2891', mode: 'ship', origin: 'Singapore', dest: 'JNPT Mumbai', lat: 10.5, lon: 86.2, destLat: 18.944, destLon: 72.95, risk: 0.45, cause: 'Port congestion expected', delay: '+120 min', angle: 300 },
+      { id: 'SH-5532', mode: 'flight', origin: 'Dubai', dest: 'Delhi', lat: 26.5, lon: 65.2, destLat: 28.5562, destLon: 77.1, risk: 0.1, cause: 'On schedule', delay: '+0 min', angle: 65 },
+      { id: 'SH-8810', mode: 'truck', origin: 'Kolkata', dest: 'Patna', lat: 24.2, lon: 86.5, destLat: 25.5941, destLon: 85.1376, risk: 0.35, cause: 'Checkpost delay', delay: '+45 min', angle: 310 },
+      { id: 'SH-3109', mode: 'ship', origin: 'Colombo', dest: 'Kochi', lat: 8.5, lon: 78.5, destLat: 9.9312, destLon: 76.2673, risk: 0.65, cause: 'Monsoon swells', delay: '+4 hrs', angle: 330 },
+      { id: 'SH-9921', mode: 'flight', origin: 'Frankfurt', dest: 'Mumbai', lat: 38.5, lon: 55.2, destLat: 19.09, destLon: 72.86, risk: 0.25, cause: 'Airspace restriction', delay: '+20 min', angle: 120 }
+    ];
+
+    const ICONS = {
+      'ship': '🚢',
+      'flight': '✈️',
+      'truck': '🚛'
+    };
+
+    function getRiskLevel(risk) {
+      if (risk > 0.7) return 'critical';
+      if (risk > 0.4) return 'high';
+      if (risk > 0.2) return 'medium';
+      return 'clear';
+    }
+
+    function getRiskColorHex(level) {
+      const colors = { 'critical': '#ff4757', 'high': '#ffb347', 'medium': '#ffd32a', 'clear': '#0be881' };
+      return colors[level];
+    }
+
+    // --- INITIALIZATION ---
+    document.addEventListener('DOMContentLoaded', () => {
+      initMap();
+      fetchInitialData();
+      
+      document.getElementById('send-btn').addEventListener('click', handleChatSubmit);
+      document.getElementById('chat-input').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') handleChatSubmit();
+      });
+      document.getElementById('demo-mode').addEventListener('click', triggerDemoMode);
+      
+      // Setup regular simulation updates
+      setInterval(simulateDisruption, 45000);
+      setInterval(updateMarkerPositions, 2000); // Tiny movements
+    });
+
+    function initMap() {
+      // Centered on Indian Ocean / South Asia
+      map = L.map('map', {zoomControl: false}).setView([15, 78], 4);
+      L.control.zoom({position: 'bottomright'}).addTo(map);
+
+      // Dark Stadia tiles (Using standard OSM if Stadia requires auth or fails, but trying Stadia dark first)
+      L.tileLayer('https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png', {
+        maxZoom: 20,
+        attribution: '&copy; <a href="https://stadiamaps.com/">Stadia Maps</a>, &copy; <a href="https://openmaptiles.org/">OpenMapTiles</a> &copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors'
+      }).addTo(map);
+    }
+
+    function fetchInitialData() {
+      // Simulate API fetch
+      setTimeout(() => {
+        renderMapItems();
+        updateFeedAndStats();
+      }, 500);
+    }
+
+    // --- MAP RENDERING ---
+    function renderMapItems() {
+      // Clear existing
+      Object.values(markers).forEach(m => map.removeLayer(m));
+      Object.values(routes).forEach(r => map.removeLayer(r));
+      markers = {};
+      routes = {};
+
+      shipments.forEach(ship => {
+        const level = getRiskLevel(ship.risk);
+        const color = getRiskColorHex(level);
+        
+        // Draw route line
+        const route = L.polyline([
+          [ship.lat, ship.lon],
+          [ship.destLat, ship.destLon]
+        ], {
+          color: color,
+          weight: 1.5,
+          opacity: 0.4,
+          dashArray: '5, 5'
+        }).addTo(map);
+        routes[ship.id] = route;
+
+        // Custom Marker
+        let size = ship.risk > 0.7 ? 16 : (ship.risk > 0.4 ? 14 : 12);
+        let classNames = `marker-${ship.mode} marker-${level} marker-pulse`;
+        
+        const html = `<div style="width:${size}px; height:${size}px; transform: rotate(${ship.angle}deg)" class="${classNames}"></div>`;
+        const icon = L.divIcon({
+          className: 'custom-div-icon',
+          html: html,
+          iconSize: [size, size],
+          iconAnchor: [size/2, size/2]
+        });
+
+        const marker = L.marker([ship.lat, ship.lon], { icon }).addTo(map);
+        
+        // Tooltip
+        marker.bindTooltip(`<b>${ship.id}</b> - ${level.toUpperCase()}<br/>ETA: ${ship.delay}`, {direction: 'top', offset: [0, -10]});
+        
+        // Popup
+        marker.bindPopup(`
+          <div class="popup-content">
+            <h3>${ICONS[ship.mode]} ${ship.id}</h3>
+            <p>Route: <span class="data-val">${ship.origin} &rarr; ${ship.dest}</span></p>
+            <p>Status: <span class="data-val" style="color:${color}">${ship.cause}</span></p>
+            <p>Delay Est: <span class="data-val">${ship.delay}</span></p>
+            <p>Risk Score: <span class="data-val">${ship.risk.toFixed(2)}</span></p>
+            <button class="ask-ai-btn" onclick="askAiAbout('${ship.id}')">Ask AI about this</button>
+          </div>
+        `);
+        
+        markers[ship.id] = marker;
+      });
+    }
+
+    function updateMarkerAppearance(shipId) {
+      const ship = shipments.find(s => s.id === shipId);
+      if(!ship || !markers[ship.id]) return;
+      
+      const level = getRiskLevel(ship.risk);
+      let size = ship.risk > 0.7 ? 16 : (ship.risk > 0.4 ? 14 : 12);
+      let classNames = `marker-${ship.mode} marker-${level} marker-pulse ${ship.isFlashing ? 'flashing-border' : ''}`;
+      
+      const icon = L.divIcon({
+        className: 'custom-div-icon',
+        html: `<div style="width:${size}px; height:${size}px; transform: rotate(${ship.angle}deg)" class="${classNames}"></div>`,
+        iconSize: [size, size],
+        iconAnchor: [size/2, size/2]
+      });
+      markers[ship.id].setIcon(icon);
+      
+      if(routes[ship.id]) {
+        routes[ship.id].setStyle({color: getRiskColorHex(level)});
+      }
+    }
+
+    function updateMarkerPositions() {
+      // Tiny simulated movement
+      shipments.forEach(ship => {
+        // Move slightly towards destination
+        ship.lat += (ship.destLat - ship.lat) * 0.001;
+        ship.lon += (ship.destLon - ship.lon) * 0.001;
+        if(markers[ship.id]) {
+          markers[ship.id].setLatLng([ship.lat, ship.lon]);
+          routes[ship.id].setLatLngs([[ship.lat, ship.lon], [ship.destLat, ship.destLon]]);
+        }
+      });
+    }
+
+    // --- LEFT PANEL RENDERING ---
+    function updateFeedAndStats() {
+      const feed = document.getElementById('alert-feed');
+      feed.innerHTML = '';
+      
+      // Sort: highest risk first
+      const sorted = [...shipments].sort((a,b) => b.risk - a.risk);
+      
+      let critCount = 0;
+      let riskCount = 0;
+
+      sorted.forEach(ship => {
+        const level = getRiskLevel(ship.risk);
+        if(level === 'critical') critCount++;
+        if(level === 'critical' || level === 'high') riskCount++;
+        
+        const card = document.createElement('div');
+        card.className = `shipment-card card-${level}`;
+        card.onclick = () => focusShipment(ship.id);
+        
+        card.innerHTML = `
+          <div class="card-header">
+            <div class="card-id-wrap">
+              <span>${ICONS[ship.mode]}</span>
+              <span class="card-id data-font">${ship.id}</span>
+            </div>
+            <span class="badge badge-${level}">${level}</span>
+          </div>
+          <div class="card-route">${ship.origin} &rarr; ${ship.dest}</div>
+          <div class="card-cause">${ship.cause}</div>
+          <div class="card-delay data-font">${ship.delay}</div>
+        `;
+        feed.appendChild(card);
+      });
+
+      document.getElementById('stats-total').innerText = `${shipments.length} Active Shipments`;
+      document.getElementById('stats-high').innerText = `${riskCount} At Risk`;
+      document.getElementById('stats-crit').innerText = `${critCount} Critical`;
+    }
+
+    function focusShipment(shipId) {
+      const ship = shipments.find(s => s.id === shipId);
+      if(ship) {
+        map.flyTo([ship.lat, ship.lon], 7, { duration: 1.5 });
+        setTimeout(() => markers[shipId].openPopup(), 1500);
+      }
+    }
+
+    // --- UI HELPERS ---
+    window.askAiAbout = function(shipId) {
+      fillChat(`Tell me about ${shipId} and what I should do`);
+      map.closePopup();
+    }
+
+    window.fillChat = function(text) {
+      const input = document.getElementById('chat-input');
+      input.value = text;
+      input.focus();
+    }
+
+    function showToast(message) {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      toast.className = 'toast';
+      toast.innerHTML = `<span>⚠️</span> ${message}`;
+      container.appendChild(toast);
+      setTimeout(() => {
+        toast.style.animation = 'slideDown 0.3s backwards reverse';
+        setTimeout(() => toast.remove(), 300);
+      }, 5000);
+    }
+
+    // --- SIMULATION ---
+    function simulateDisruption() {
+      // Pick random non-critical shipment
+      const candidates = shipments.filter(s => s.risk < 0.7 && s.id !== 'SH-1042');
+      if(candidates.length === 0) return;
+      const ship = candidates[Math.floor(Math.random() * candidates.length)];
+      
+      triggerDisruption(ship.id, `Sudden weather anomaly near ${ship.origin}`, '+2.5 hrs');
+    }
+
+    function triggerDisruption(shipId, cause, delay) {
+      const ship = shipments.find(s => s.id === shipId);
+      if(!ship) return;
+      
+      ship.risk = 0.85;
+      ship.cause = cause;
+      ship.delay = delay;
+      ship.isFlashing = true;
+      
+      showToast(`New Disruption Detected — ${shipId}`);
+      updateMarkerAppearance(shipId);
+      updateFeedAndStats();
+      
+      // Remove flash after 8s
+      setTimeout(() => {
+        ship.isFlashing = false;
+        updateMarkerAppearance(shipId);
+      }, 8000);
+    }
+
+    // --- AI CHAT SYSTEM ---
+    const chatHistory = document.getElementById('chat-history');
+    const inputField = document.getElementById('chat-input');
+    
+    function handleChatSubmit() {
+      const text = inputField.value.trim();
+      if(!text) return;
+      
+      // Add User Message
+      appendMessage('user', text);
+      inputField.value = '';
+      
+      // Show waiting indicator
+      const typingId = 'typing-' + Date.now();
+      appendTypingIndicator(typingId);
+      
+      // Simulate backend AI call
+      setTimeout(() => {
+        document.getElementById(typingId).remove();
+        generateAiResponse(text);
+      }, 1200);
+    }
+
+    function appendMessage(role, text) {
+      const div = document.createElement('div');
+      div.className = `message ${role === 'user' ? 'msg-user' : 'msg-ai'}`;
+      if(role === 'ai') {
+        div.innerHTML = `<div class="msg-ai-header"><span class="logo-mark" style="font-size:12px;">L&Sigma;</span> Assistant</div><div class="msg-content"></div>`;
+        chatHistory.appendChild(div);
+        typeWriterEffect(div.querySelector('.msg-content'), text);
+      } else {
+        div.innerText = text;
+        chatHistory.appendChild(div);
+        scrollToBottom();
+      }
+    }
+
+    function appendTypingIndicator(id) {
+      const div = document.createElement('div');
+      div.id = id;
+      div.className = 'typing-indicator';
+      div.innerHTML = `<div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div>`;
+      chatHistory.appendChild(div);
+      scrollToBottom();
+    }
+
+    function typeWriterEffect(element, text, speed = 15) {
+      let i = 0;
+      function type() {
+        if (i < text.length) {
+          element.innerHTML += text.charAt(i);
+          i++;
+          // auto scroll occasionally
+          if(i % 10 === 0) scrollToBottom();
+          setTimeout(type, speed);
+        } else {
+          // Parse basic markdown when done typing
+          element.innerHTML = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+          scrollToBottom();
+        }
+      }
+      type();
+    }
+
+    function scrollToBottom() {
+      chatHistory.scrollTop = chatHistory.scrollHeight;
+    }
+
+    function generateAiResponse(input) {
+      input = input.toLowerCase();
+      let response = "";
+      
+      // Mock Context Injection Check
+      const contextEnabled = document.getElementById('context-toggle').checked;
+      
+      if(input.includes("risk") || input.includes("critical")) {
+        const crit = shipments.filter(s => s.risk > 0.7);
+        if(crit.length > 0) {
+          response = `Based on live telemetry, I see **${crit.length} critical shipments**. The most severe is **${crit[0].id}** (${crit[0].cause}). I recommend proactive rerouting or notifying the receiving facility immediately.`;
+        } else {
+          response = "Currently, all tracked shipments are below critical risk thresholds. Operations are running nominally.";
+        }
+      } 
+      else if (input.includes("weather")) {
+        response = "Analyzing meteorology patterns: We're tracking heavy monsoons in the Bay of Bengal which may impact maritime routes to Chennai and Kolkata. Airfreight paths over Northern Europe are clear.";
+      }
+      else {
+        response = "I've analyzed your request against the latest supply chain graph. " + 
+                  (contextEnabled ? "Using current injected context, I can confirm system states are stable." : "") + 
+                  " Could you specify a particular shipment ID or region for deeper analysis?";
+      }
+      
+      appendMessage('ai', response);
+    }
+
+    // --- DEMO MODE TRIGGER (Hackathon Magic) ---
+    let demoActive = false;
+    function triggerDemoMode() {
+      if(demoActive) return;
+      demoActive = true;
+      
+      // 1. Force SH-1042 CRITICAL
+      triggerDisruption('SH-1042', 'Flooding NH-48 near Krishnagiri', '+3.5 hrs');
+      focusShipment('SH-1042');
+      
+      // 2. Wait 1.5s, auto-type
+      setTimeout(() => {
+        const query = "What's happening with SH-1042 and what should I do right now?";
+        inputField.value = '';
+        let i=0;
+        const interval = setInterval(() => {
+          inputField.value += query[i];
+          i++;
+          if(i >= query.length) {
+            clearInterval(interval);
+            
+            // Send
+            setTimeout(() => {
+              appendMessage('user', query);
+              inputField.value = '';
+              const typingId = 'typing-' + Date.now();
+              appendTypingIndicator(typingId);
+              
+              // 3. Mock Immediate AI Response
+              setTimeout(() => {
+                document.getElementById(typingId).remove();
+                const demoResp = "⚠️ **CRITICAL**: Shipment SH-1042 (Chennai→Bengaluru truck) has hit severe disruption. Real-time rain data shows NH-48 flooded near Krishnagiri. I recommend immediate reroute via NH-544 through Hosur — ETA impact: +38 min, but you avoid a projected 3.5hr delay. I've also flagged **SH-2891** (Singapore→JNPT ship) — port congestion at JNPT is worsening, 67% probability of 2hr+ berth delay. Recommend alerting your Mumbai warehouse team now.";
+                appendMessage('ai', demoResp);
+              }, 1500);
+              
+            }, 400);
+          }
+        }, 30);
+      }, 1500);
+    }
+
+  </script>
+</body>
+</html>
